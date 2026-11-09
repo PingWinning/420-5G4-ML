@@ -39,4 +39,19 @@ cd agent
 - `filemanager.*` : lecture/écriture des fichiers pipe-delimited et sauvegardes.
 - `book.*`, `user.*` : modèles et sérialisation.
 
-Le `.devcontainer` fournit X11, mais l'application est uniquement console.
+## Test GUI Python
+
+Test d'interface minimal avec CustomTkinter dans `gui/`.
+
+```bash
+cd agent/gui
+/usr/bin/python3 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
+./.venv/bin/python main.py
+```
+
+- Ne pas réutiliser le `.venv` racine (obsolète/cassé) ; le venv local `gui/.venv/` est ignoré par git.
+- `requirements.txt` fige les dépendances installées.
+- La fenêtre nécessite un serveur X11 (`DISPLAY`), fourni par le devcontainer.
+
+Le `.devcontainer` fournit X11, utilisé par la GUI Python de test ; l'application C++ reste uniquement console.
