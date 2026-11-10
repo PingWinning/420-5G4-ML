@@ -39,6 +39,23 @@ cd agent
 - `filemanager.*` : lecture/écriture des fichiers pipe-delimited et sauvegardes.
 - `book.*`, `user.*` : modèles et sérialisation.
 
+## Module Python pybind11
+
+Module minimal `bibliotheque_py` : charge les données et expose `Library` / `Book`.
+
+```bash
+cd agent
+cmake -S . -B build -DBUILD_PYTHON_MODULE=ON \
+  -DPython_EXECUTABLE="$PWD/gui/.venv/bin/python"
+cmake --build build -j
+./gui/.venv/bin/python python/test_bibliotheque_py.py
+```
+
+- `python/bindings.cpp` est dans un sous-dossier : le GLOB racine `*.cpp` ne l'inclut pas et le target console reste inchangé.
+- `BUILD_PYTHON_MODULE` est activé par défaut ; si Python ou pybind11 manque, un avertissement est émis et la console se construit quand même.
+- pybind11 système (2.13.6) et les headers Python 3.13 suffisent ; aucune dépendance pip supplémentaire.
+- Le test copie `data/` dans un répertoire temporaire et ne modifie pas les fichiers suivis.
+
 ## Test GUI Python
 
 Test d'interface minimal avec CustomTkinter dans `gui/`.
