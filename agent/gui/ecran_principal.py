@@ -2,6 +2,8 @@ from tkinter import ttk
 
 import customtkinter as ctk
 
+from dialogue_ajout_livre import DialogueAjoutLivre
+from dialogue_emprunt_livre import DialogueEmpruntLivre
 from theme import (
     COULEUR_BORDURE,
     COULEUR_FOND,
@@ -149,15 +151,25 @@ class EcranPrincipal(ctk.CTkFrame):
         actions = ctk.CTkFrame(self, fg_color="transparent")
         actions.pack(fill="x", padx=24, pady=(16, 20))
 
-        bouton_ajouter = self._bouton_primaire(actions, "Ajouter un livre", 150)
+        bouton_ajouter = self._bouton_primaire(
+            actions,
+            "Ajouter un livre",
+            150,
+            commande=self._ouvrir_dialogue_ajout,
+        )
         bouton_ajouter.pack(side="left")
 
-        for texte, largeur in (
-            ("Supprimer", 100),
-            ("Emprunter", 100),
-            ("Retourner", 100),
+        for texte, largeur, commande in (
+            ("Supprimer", 100, None),
+            ("Emprunter", 100, self._ouvrir_dialogue_emprunt),
+            ("Retourner", 100, None),
         ):
-            bouton = self._bouton_secondaire(actions, texte, largeur)
+            bouton = self._bouton_secondaire(
+                actions,
+                texte,
+                largeur,
+                commande,
+            )
             bouton.pack(side="left", padx=(10, 0))
 
         bouton_copie = self._bouton_secondaire(actions, "Créer une copie", 140)
@@ -166,15 +178,25 @@ class EcranPrincipal(ctk.CTkFrame):
         bouton_sauvegarder = self._bouton_secondaire(actions, "Sauvegarder", 130)
         bouton_sauvegarder.pack(side="right", padx=(0, 10))
 
+    def _ouvrir_dialogue_ajout(self) -> None:
+        dialogue = DialogueAjoutLivre(self.winfo_toplevel())
+        self.wait_window(dialogue)
+
+    def _ouvrir_dialogue_emprunt(self) -> None:
+        dialogue = DialogueEmpruntLivre(self.winfo_toplevel())
+        self.wait_window(dialogue)
+
     def _bouton_primaire(
         self,
         parent: ctk.CTkFrame,
         texte: str,
         largeur: int,
+        commande=None,
     ) -> ctk.CTkButton:
         return ctk.CTkButton(
             parent,
             text=texte,
+            command=commande,
             width=largeur,
             height=HAUTEUR_BOUTON,
             corner_radius=RAYON,
@@ -189,10 +211,12 @@ class EcranPrincipal(ctk.CTkFrame):
         parent: ctk.CTkFrame,
         texte: str,
         largeur: int,
+        commande=None,
     ) -> ctk.CTkButton:
         return ctk.CTkButton(
             parent,
             text=texte,
+            command=commande,
             width=largeur,
             height=HAUTEUR_BOUTON,
             corner_radius=RAYON,
