@@ -4,6 +4,7 @@ import customtkinter as ctk
 
 from theme import (
     COULEUR_BORDURE,
+    COULEUR_ERREUR,
     COULEUR_FOND,
     COULEUR_FOOTER,
     COULEUR_PRIMAIRE,
@@ -32,10 +33,20 @@ COLONNES = (
 
 
 class EcranUtilisateurs(ctk.CTkFrame):
-    def __init__(self, parent: ctk.CTkFrame) -> None:
+    def __init__(
+        self,
+        parent: ctk.CTkFrame,
+        bibliotheque=None,
+        erreur: str | None = None,
+        on_mutation=None,
+    ) -> None:
         super().__init__(parent, fg_color=COULEUR_FOND, corner_radius=0)
+        self.bibliotheque = bibliotheque
+        self.erreur = erreur
+        self.on_mutation = on_mutation
         self._construire_pied()
         self._construire_contenu()
+        self._rafraichir_tableau()
 
     def _construire_pied(self) -> None:
         pied = ctk.CTkFrame(
@@ -47,7 +58,7 @@ class EcranUtilisateurs(ctk.CTkFrame):
         pied.pack(side="bottom", fill="x")
         pied.pack_propagate(False)
 
-        texte = ctk.CTkLabel(
+        self.label_compteur = ctk.CTkLabel(
             pied,
             text="0 utilisateur",
             height=HAUTEUR_PIED,
@@ -55,7 +66,7 @@ class EcranUtilisateurs(ctk.CTkFrame):
             text_color=COULEUR_TEXTE_SECONDAIRE,
             anchor="w",
         )
-        texte.pack(side="left", padx=14)
+        self.label_compteur.pack(side="left", padx=14)
 
     def _construire_contenu(self) -> None:
         contenu = ctk.CTkFrame(self, fg_color=COULEUR_FOND, corner_radius=0)
@@ -141,7 +152,7 @@ class EcranUtilisateurs(ctk.CTkFrame):
         )
         label_nom.pack(fill="x", padx=16, pady=(0, 4))
 
-        champ_nom = ctk.CTkEntry(
+        self.champ_nom = ctk.CTkEntry(
             panneau,
             height=HAUTEUR_CHAMP,
             corner_radius=RAYON,
@@ -151,7 +162,7 @@ class EcranUtilisateurs(ctk.CTkFrame):
             text_color=COULEUR_TEXTE,
             font=POLICE_NORMALE,
         )
-        champ_nom.pack(fill="x", padx=16, pady=(0, 12))
+        self.champ_nom.pack(fill="x", padx=16, pady=(0, 12))
 
         label_id = ctk.CTkLabel(
             panneau,
@@ -163,7 +174,7 @@ class EcranUtilisateurs(ctk.CTkFrame):
         )
         label_id.pack(fill="x", padx=16, pady=(0, 4))
 
-        champ_id = ctk.CTkEntry(
+        self.champ_id = ctk.CTkEntry(
             panneau,
             height=HAUTEUR_CHAMP,
             corner_radius=RAYON,
@@ -176,11 +187,12 @@ class EcranUtilisateurs(ctk.CTkFrame):
             font=POLICE_NORMALE,
             state="disabled",
         )
-        champ_id.pack(fill="x", padx=16, pady=(0, 16))
+        self.champ_id.pack(fill="x", padx=16, pady=(0, 16))
 
         bouton = ctk.CTkButton(
             panneau,
             text="Ajouter",
+            command=self._ajouter_utilisateur,
             height=HAUTEUR_BOUTON,
             corner_radius=RAYON,
             fg_color=COULEUR_PRIMAIRE,
@@ -188,4 +200,92 @@ class EcranUtilisateurs(ctk.CTkFrame):
             text_color="#ffffff",
             font=POLICE_BOUTON,
         )
-        bouton.pack(fill="x", padx=16, pady=(0, 16))
+        bouton.pack(fill="x", padx=16, pady=(0, 8))
+
+        self.label_message = ctk.CTkLabel(
+            panneau,
+            text="",
+            height=18,
+            font=POLICE_PETITE,
+            text_color=COULEUR_TEXTE_SECONDAIRE,
+            anchor="w",
+        )
+        self.label_message.pack(fill="x", padx=16, pady=(0, 16))
+
+    def _rafraichir_tableau(self) -> None:
+        for element in self.tableau.get_children():
+            self.tableau.delete(element)
+
+        utilisateurs = (
+            self.bibliotheque.all_users() if self.bibliotheque is not None else []
+        )
+        for utilisateur in utilisateurs:
+            self.tableau.insert(
+                "",
+                "end",
+                values=(
+                    utilisateur.name,
+                    utilisateur.user_id,
+                    len(utilisateur.borrowed_books),
+                ),
+            )
+
+        nombre = len(utilisateurs)
+        libelle = "utilisateur" if nombre <= 1 else "utilisateurs"
+        self.label_compteur.configure(text=f"{nombre} {libelle}")
+        self._mettre_a_jour_id()
+
+    def _mettre_a_jour_id(self) -> None:
+        identifiant = self._prochain_id()
+        self.champ_id.configure(state="normal")
+        self.champ_id.delete(0, "end")
+        if identifiant:
+            self.champ_id.insert(0, identifiant)
+        self.champ_id.configure(state="disabled")
+
+    def _prochain_id(self) -> str:
+        if self.bibliotheque is None:
+            return ""
+
+        existants = {utilisateur.user_id for utilisateur in self.bibliotheque.all_users()}
+        numero = 1
+        while f"USR{numero:03d}" in existants:
+            numero += 1
+        return f"USR{numero:03d}"
+
+    def _ajouter_utilisateur(self) -> None:
+        self._effacer_message()
+
+        if self.bibliotheque is None:
+            self._afficher_message("La bibliothèque n'est pas chargée.", erreur=True)
+            return
+
+        nom = self.champ_nom.get().strip()
+        if not nom:
+            self._afficher_message("Le nom est obligatoire.", erreur=True)
+            return
+
+        identifiant = self.champ_id.get().strip()
+        if not identifiant:
+            self._afficher_message("ID utilisateur indisponible.", erreur=True)
+            return
+
+        if not self.bibliotheque.add_user(nom, identifiant):
+            self._afficher_message("Un utilisateur avec cet ID existe déjà.", erreur=True)
+            self._mettre_a_jour_id()
+            return
+
+        self.champ_nom.delete(0, "end")
+        self._rafraichir_tableau()
+        if self.on_mutation is not None:
+            self.on_mutation()
+        self._afficher_message("Utilisateur ajouté.")
+
+    def _afficher_message(self, message: str, erreur: bool = False) -> None:
+        self.label_message.configure(
+            text=message,
+            text_color=COULEUR_ERREUR if erreur else COULEUR_TEXTE_SECONDAIRE,
+        )
+
+    def _effacer_message(self) -> None:
+        self.label_message.configure(text="")

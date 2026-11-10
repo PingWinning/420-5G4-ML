@@ -115,6 +115,22 @@ def main():
             user for user in library.all_users() if user.user_id == "USR002"
         ).borrowed_books
 
+        avant = library.users_count
+        assert library.add_user("Nouvel Utilisateur", "USR099") is True
+        assert library.users_count == avant + 1
+        nouveau = next(
+            user for user in library.all_users() if user.user_id == "USR099"
+        )
+        assert nouveau.name == "Nouvel Utilisateur"
+        assert nouveau.borrowed_books == []
+
+        avant = library.users_count
+        assert library.add_user("Doublon", "USR001") is False
+        assert library.users_count == avant
+        assert next(
+            user for user in library.all_users() if user.user_id == "USR001"
+        ).name == "Marie Dubois"
+
     assert source_hashes == {
         name: file_hash(DATA_DIR / name) for name in ("books.txt", "users.txt")
     }

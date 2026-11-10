@@ -70,6 +70,7 @@ cd agent/gui
 - Ne pas réutiliser le `.venv` racine (obsolète/cassé) ; le venv local `gui/.venv/` est ignoré par git.
 - `requirements.txt` fige les dépendances installées.
 - L'écran Livres affiche les vraies données via `gui/donnees.py` : le module `bibliotheque_py` est importé depuis `build/` et les fichiers sont lus depuis `data/`.
+- L'écran Utilisateurs charge `all_users()`. L'ID du panneau d'ajout est généré automatiquement en grisé : premier `USRxxx` libre sur 3 chiffres, recalculé après chaque ajout. L'ajout reste en mémoire, sans sauvegarde dans `data/`.
 - Si le chargement échoue, l'écran Livres affiche l'erreur et la commande cmake pour compiler le module.
 - La fenêtre nécessite un serveur X11 (`DISPLAY`), fourni par le devcontainer.
 

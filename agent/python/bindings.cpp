@@ -80,6 +80,15 @@ PYBIND11_MODULE(bibliotheque_py, m) {
             }
             return users;
         })
+        .def("add_user", [](Library& library,
+                            const std::string& name,
+                            const std::string& user_id) {
+            if (library.findUserById(user_id) != nullptr) {
+                return false;
+            }
+            library.addUser(User(name, user_id));
+            return true;
+        }, py::arg("name"), py::arg("user_id"))
         .def("check_out_book", &Library::checkOutBook,
              py::arg("isbn"), py::arg("user_id"))
         .def("return_book", &Library::returnBook, py::arg("isbn"))
