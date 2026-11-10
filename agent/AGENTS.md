@@ -29,6 +29,7 @@ cd agent
 
 - `data/books.txt` : `titre|auteur|isbn|1|borrowerId` (`1` disponible, `0` emprunté).
 - `data/users.txt` : `nom|userId|isbn1,isbn2`.
+- `Library::removeBook` côté C++ ne vérifie pas si le livre est emprunté ; le refus de supprimer un livre emprunté est appliqué uniquement par la GUI.
 - L'application charge et sauvegarde ces fichiers suivis par git (sauvegarde à la sortie et via le menu 12). Pour tester sans modifier le dépôt, copier `data/` dans un répertoire temporaire et passer ce chemin à `-d`.
 - Le menu 13 crée des fichiers `.backup` dans le répertoire de données ; ils ne sont pas ignorés par git. `copy_file` n'écrase pas un backup existant.
 

@@ -1,4 +1,4 @@
-from tkinter import StringVar, ttk
+from tkinter import StringVar, messagebox, ttk
 
 import customtkinter as ctk
 
@@ -255,7 +255,7 @@ class EcranPrincipal(ctk.CTkFrame):
         bouton_ajouter.pack(side="left")
 
         for texte, largeur, commande in (
-            ("Supprimer", 100, None),
+            ("Supprimer", 100, self._supprimer_livre),
             ("Emprunter", 100, self._ouvrir_dialogue_emprunt),
             ("Retourner", 100, self._retourner_livre),
         ):
@@ -316,8 +316,14 @@ class EcranPrincipal(ctk.CTkFrame):
 
     def _ouvrir_dialogue_ajout(self) -> None:
         self._effacer_message()
-        dialogue = DialogueAjoutLivre(self.winfo_toplevel())
+        dialogue = DialogueAjoutLivre(
+            self.winfo_toplevel(),
+            self.bibliotheque,
+        )
         self.wait_window(dialogue)
+        if dialogue.ajout_reussi:
+            self._apres_mutation()
+            self._afficher_message("Livre ajouté.")
 
     def _ouvrir_dialogue_emprunt(self) -> None:
         self._effacer_message()
@@ -349,6 +355,33 @@ class EcranPrincipal(ctk.CTkFrame):
                 "Impossible de retourner ce livre : il n'est pas emprunté.",
                 erreur=True,
             )
+
+    def _supprimer_livre(self) -> None:
+        self._effacer_message()
+        livre = self._livre_selectionne()
+        if livre is None:
+            return
+
+        if not livre.available:
+            self._afficher_message(
+                "Impossible de supprimer un livre emprunté. Retournez-le d'abord.",
+                erreur=True,
+            )
+            return
+
+        confirmation = messagebox.askyesno(
+            "Supprimer un livre",
+            f"Supprimer « {livre.title} » ?",
+            parent=self.winfo_toplevel(),
+        )
+        if not confirmation:
+            return
+
+        if self.bibliotheque.remove_book(livre.isbn):
+            self._apres_mutation()
+            self._afficher_message("Livre supprimé.")
+        else:
+            self._afficher_message("Livre introuvable.", erreur=True)
 
     def _bouton_primaire(
         self,

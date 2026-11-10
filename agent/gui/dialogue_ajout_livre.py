@@ -27,8 +27,10 @@ from theme import (
 
 
 class DialogueAjoutLivre(ctk.CTkToplevel):
-    def __init__(self, parent: ctk.CTk) -> None:
+    def __init__(self, parent: ctk.CTk, bibliotheque) -> None:
         super().__init__(parent, fg_color=COULEUR_FOND)
+        self.bibliotheque = bibliotheque
+        self.ajout_reussi = False
         self.title("Ajouter un livre")
         self.resizable(False, False)
         self.transient(parent)
@@ -76,7 +78,7 @@ class DialogueAjoutLivre(ctk.CTkToplevel):
         bouton_ajouter = ctk.CTkButton(
             actions,
             text="Ajouter",
-            command=self._fermer,
+            command=self._ajouter,
             width=100,
             height=HAUTEUR_BOUTON,
             corner_radius=RAYON,
@@ -160,6 +162,30 @@ class DialogueAjoutLivre(ctk.CTkToplevel):
         )
         champ.pack(fill="x", pady=(0, 14))
         return champ
+
+    def _ajouter(self) -> None:
+        self.label_erreur.configure(text="")
+
+        if self.bibliotheque is None:
+            self._afficher_erreur("La bibliothèque n'est pas chargée.")
+            return
+
+        titre = self.champ_titre.get().strip()
+        auteur = self.champ_auteur.get().strip()
+        isbn = self.champ_isbn.get().strip()
+        if not titre or not auteur or not isbn:
+            self._afficher_erreur("Tous les champs sont obligatoires.")
+            return
+
+        if not self.bibliotheque.add_book(titre, auteur, isbn):
+            self._afficher_erreur("Un livre avec cet ISBN existe déjà.")
+            return
+
+        self.ajout_reussi = True
+        self._fermer()
+
+    def _afficher_erreur(self, message: str) -> None:
+        self.label_erreur.configure(text=message)
 
     def _centrer(self, parent: ctk.CTk) -> None:
         self.update_idletasks()
