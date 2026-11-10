@@ -2,6 +2,7 @@ from tkinter import ttk
 
 import customtkinter as ctk
 
+from donnees import charger_bibliotheque
 from ecran_principal import EcranPrincipal
 from ecran_utilisateurs import EcranUtilisateurs
 from theme import (
@@ -86,9 +87,18 @@ class Application(ctk.CTk):
 
         self.ecran_actuel: ctk.CTkFrame | None = None
         self.boutons_navigation: dict[str, ctk.CTkButton] = {}
+        self.labels_stats: dict[str, tuple[ctk.CTkLabel, str]] = {}
+        self.erreur_chargement: str | None = None
+
+        try:
+            self.bibliotheque = charger_bibliotheque()
+        except Exception as erreur:
+            self.bibliotheque = None
+            self.erreur_chargement = str(erreur)
 
         configurer_style_tableau()
         self._construire_interface()
+        self._mettre_a_jour_statistiques()
         self.afficher_ecran("livres")
 
     def _construire_interface(self) -> None:
@@ -236,21 +246,36 @@ class Application(ctk.CTk):
         )
         titre_stats.pack(fill="x", padx=12, pady=(12, 4))
 
-        for texte in (
-            "Total des livres : —",
-            "Disponibles : —",
-            "Empruntés : —",
-            "Utilisateurs : —",
+        for cle, libelle in (
+            ("total", "Total des livres"),
+            ("disponibles", "Disponibles"),
+            ("empruntes", "Empruntés"),
+            ("utilisateurs", "Utilisateurs"),
         ):
             valeur = ctk.CTkLabel(
                 statistiques,
-                text=texte,
+                text=f"{libelle} : —",
                 height=18,
                 font=POLICE_PETITE,
                 text_color=COULEUR_TEXTE_SECONDAIRE,
                 anchor="w",
             )
             valeur.pack(fill="x", padx=12, pady=2)
+            self.labels_stats[cle] = (valeur, libelle)
+
+    def _mettre_a_jour_statistiques(self) -> None:
+        if self.bibliotheque is None:
+            valeurs = {cle: "—" for cle in self.labels_stats}
+        else:
+            valeurs = {
+                "total": self.bibliotheque.total_books,
+                "disponibles": self.bibliotheque.available_count,
+                "empruntes": self.bibliotheque.checked_out_count,
+                "utilisateurs": self.bibliotheque.users_count,
+            }
+
+        for cle, (label, libelle) in self.labels_stats.items():
+            label.configure(text=f"{libelle} : {valeurs[cle]}")
 
     def afficher_ecran(self, nom: str) -> None:
         if nom not in ECRANS:
@@ -259,9 +284,18 @@ class Application(ctk.CTk):
         if self.ecran_actuel is not None:
             self.ecran_actuel.destroy()
 
-        self.ecran_actuel = ECRANS[nom](self.conteneur)
+        if nom == "livres":
+            self.ecran_actuel = EcranPrincipal(
+                self.conteneur,
+                self.bibliotheque,
+                self.erreur_chargement,
+            )
+        else:
+            self.ecran_actuel = EcranUtilisateurs(self.conteneur)
+
         self.ecran_actuel.pack(fill="both", expand=True)
         self._mettre_a_jour_navigation(nom)
+        self._mettre_a_jour_statistiques()
 
     def _mettre_a_jour_navigation(self, nom_actif: str) -> None:
         for nom, bouton in self.boutons_navigation.items():

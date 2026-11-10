@@ -69,6 +69,8 @@ cd agent/gui
 
 - Ne pas réutiliser le `.venv` racine (obsolète/cassé) ; le venv local `gui/.venv/` est ignoré par git.
 - `requirements.txt` fige les dépendances installées.
+- L'écran Livres affiche les vraies données via `gui/donnees.py` : le module `bibliotheque_py` est importé depuis `build/` et les fichiers sont lus depuis `data/`.
+- Si le chargement échoue, l'écran Livres affiche l'erreur et la commande cmake pour compiler le module.
 - La fenêtre nécessite un serveur X11 (`DISPLAY`), fourni par le devcontainer.
 
 Le `.devcontainer` fournit X11, utilisé par la GUI Python de test ; l'application C++ reste uniquement console.

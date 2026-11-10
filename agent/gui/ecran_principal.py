@@ -4,8 +4,10 @@ import customtkinter as ctk
 
 from dialogue_ajout_livre import DialogueAjoutLivre
 from dialogue_emprunt_livre import DialogueEmpruntLivre
+from donnees import COMMANDE_COMPILATION
 from theme import (
     COULEUR_BORDURE,
+    COULEUR_ERREUR,
     COULEUR_FOND,
     COULEUR_PRIMAIRE,
     COULEUR_PRIMAIRE_SURVOL,
@@ -34,11 +36,20 @@ COLONNES = (
 
 
 class EcranPrincipal(ctk.CTkFrame):
-    def __init__(self, parent: ctk.CTkFrame) -> None:
+    def __init__(
+        self,
+        parent: ctk.CTkFrame,
+        bibliotheque=None,
+        erreur: str | None = None,
+    ) -> None:
         super().__init__(parent, fg_color=COULEUR_FOND, corner_radius=0)
+        self.bibliotheque = bibliotheque
+        self.erreur = erreur
         self._construire_filtres()
+        self._construire_erreur()
         self._construire_tableau()
         self._construire_actions()
+        self._peupler_tableau()
 
     def _construire_filtres(self) -> None:
         filtres = ctk.CTkFrame(self, fg_color="transparent")
@@ -116,6 +127,55 @@ class EcranPrincipal(ctk.CTkFrame):
             corner_radius=3,
         )
         disponibles.grid(row=1, column=2, sticky="w")
+
+    def _construire_erreur(self) -> None:
+        if not self.erreur:
+            return
+
+        cadre = ctk.CTkFrame(
+            self,
+            fg_color=COULEUR_FOND,
+            corner_radius=RAYON,
+            border_width=1,
+            border_color=COULEUR_ERREUR,
+        )
+        cadre.pack(fill="x", padx=24, pady=(0, 12))
+
+        message = ctk.CTkLabel(
+            cadre,
+            text=(
+                f"Impossible de charger les données : {self.erreur}\n"
+                f"Compilez le module avec :\n{COMMANDE_COMPILATION}"
+            ),
+            font=POLICE_PETITE,
+            text_color=COULEUR_ERREUR,
+            anchor="w",
+            justify="left",
+            wraplength=760,
+        )
+        message.pack(fill="x", padx=12, pady=10)
+
+    def _peupler_tableau(self) -> None:
+        for element in self.tableau.get_children():
+            self.tableau.delete(element)
+
+        if self.bibliotheque is None:
+            return
+
+        for livre in self.bibliotheque.all_books():
+            statut = "Disponible" if livre.available else "Emprunté"
+            emprunteur = livre.borrower_id or "—"
+            self.tableau.insert(
+                "",
+                "end",
+                values=(
+                    livre.title,
+                    livre.author,
+                    livre.isbn,
+                    statut,
+                    emprunteur,
+                ),
+            )
 
     def _construire_tableau(self) -> None:
         cadre_tableau = ctk.CTkFrame(
