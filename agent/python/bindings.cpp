@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,35 @@ PYBIND11_MODULE(bibliotheque_py, m) {
         .def("all_books", [](Library& library) {
             std::vector<Book> books;
             for (Book* book : library.getAllBooks()) {
+                books.push_back(*book);
+            }
+            return books;
+        })
+        .def("search_books_by_title", [](Library& library, const std::string& title) {
+            std::vector<Book> books;
+            for (Book* book : library.searchBooksByTitle(title)) {
+                books.push_back(*book);
+            }
+            return books;
+        }, py::arg("title"))
+        .def("search_books_by_author", [](Library& library, const std::string& author) {
+            std::vector<Book> books;
+            for (Book* book : library.searchBooksByAuthor(author)) {
+                books.push_back(*book);
+            }
+            return books;
+        }, py::arg("author"))
+        .def("find_book_by_isbn", [](Library& library, const std::string& isbn)
+                -> std::optional<Book> {
+            Book* book = library.findBookByISBN(isbn);
+            if (book == nullptr) {
+                return std::nullopt;
+            }
+            return *book;
+        }, py::arg("isbn"))
+        .def("available_books", [](Library& library) {
+            std::vector<Book> books;
+            for (Book* book : library.getAvailableBooks()) {
                 books.push_back(*book);
             }
             return books;

@@ -52,6 +52,29 @@ def main():
         assert library.checked_out_count == library.total_books - library.available_count
         assert library.users_count > 0
 
+        par_titre = library.search_books_by_title("petit prince")
+        assert [book.title for book in par_titre] == ["Le Petit Prince"]
+
+        par_auteur = library.search_books_by_author("victor hugo")
+        assert len(par_auteur) == 5
+        assert all(book.author == "Victor Hugo" for book in par_auteur)
+
+        assert len(library.search_books_by_title("")) == len(books)
+        assert len(library.search_books_by_author("")) == len(books)
+
+        livre = library.find_book_by_isbn("9782070612758")
+        assert livre is not None
+        assert livre.title == "Le Petit Prince"
+        assert library.find_book_by_isbn("0000000000000") is None
+
+        disponibles = library.available_books()
+        assert len(disponibles) == library.available_count
+        assert all(book.available for book in disponibles)
+        assert {book.isbn for book in disponibles} == {
+            book.isbn for book in books if book.available
+        }
+        assert all(isinstance(book, bibliotheque_py.Book) for book in disponibles)
+
     assert source_hashes == {
         name: file_hash(DATA_DIR / name) for name in ("books.txt", "users.txt")
     }

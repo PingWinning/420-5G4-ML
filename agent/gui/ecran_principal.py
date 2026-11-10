@@ -1,4 +1,4 @@
-from tkinter import ttk
+from tkinter import StringVar, ttk
 
 import customtkinter as ctk
 
@@ -49,7 +49,8 @@ class EcranPrincipal(ctk.CTkFrame):
         self._construire_erreur()
         self._construire_tableau()
         self._construire_actions()
-        self._peupler_tableau()
+        self.recherche_var.trace_add("write", self._on_recherche_change)
+        self._rafraichir_tableau()
 
     def _construire_filtres(self) -> None:
         filtres = ctk.CTkFrame(self, fg_color="transparent")
@@ -68,7 +69,8 @@ class EcranPrincipal(ctk.CTkFrame):
         )
         label_rechercher.grid(row=0, column=0, sticky="w", padx=(0, 12), pady=(0, 4))
 
-        champ_recherche = ctk.CTkEntry(
+        self.recherche_var = StringVar()
+        self.champ_recherche = ctk.CTkEntry(
             filtres,
             height=HAUTEUR_CHAMP,
             corner_radius=RAYON,
@@ -76,11 +78,12 @@ class EcranPrincipal(ctk.CTkFrame):
             border_color=COULEUR_BORDURE,
             fg_color=COULEUR_FOND,
             text_color=COULEUR_TEXTE,
+            textvariable=self.recherche_var,
             placeholder_text="Titre ou auteur…",
             placeholder_text_color=COULEUR_TEXTE_PLACEHOLDER,
             font=POLICE_NORMALE,
         )
-        champ_recherche.grid(row=1, column=0, sticky="ew", padx=(0, 12))
+        self.champ_recherche.grid(row=1, column=0, sticky="ew", padx=(0, 12))
 
         label_par = ctk.CTkLabel(
             filtres,
@@ -92,7 +95,7 @@ class EcranPrincipal(ctk.CTkFrame):
         )
         label_par.grid(row=0, column=1, sticky="w", padx=(0, 12), pady=(0, 4))
 
-        choix_tri = ctk.CTkComboBox(
+        self.choix_par = ctk.CTkComboBox(
             filtres,
             values=["Titre", "Auteur", "ISBN"],
             width=140,
@@ -110,11 +113,12 @@ class EcranPrincipal(ctk.CTkFrame):
             font=POLICE_NORMALE,
             dropdown_font=POLICE_NORMALE,
             state="readonly",
+            command=lambda valeur: self._rafraichir_tableau(),
         )
-        choix_tri.set("Titre")
-        choix_tri.grid(row=1, column=1, sticky="w", padx=(0, 12))
+        self.choix_par.set("Titre")
+        self.choix_par.grid(row=1, column=1, sticky="w", padx=(0, 12))
 
-        disponibles = ctk.CTkCheckBox(
+        self.filtre_disponibles = ctk.CTkCheckBox(
             filtres,
             text="Disponibles seulement",
             font=POLICE_NORMALE,
@@ -125,8 +129,9 @@ class EcranPrincipal(ctk.CTkFrame):
             checkbox_width=14,
             checkbox_height=14,
             corner_radius=3,
+            command=self._rafraichir_tableau,
         )
-        disponibles.grid(row=1, column=2, sticky="w")
+        self.filtre_disponibles.grid(row=1, column=2, sticky="w")
 
     def _construire_erreur(self) -> None:
         if not self.erreur:
@@ -155,14 +160,42 @@ class EcranPrincipal(ctk.CTkFrame):
         )
         message.pack(fill="x", padx=12, pady=10)
 
-    def _peupler_tableau(self) -> None:
+    def _on_recherche_change(self, *args) -> None:
+        self._rafraichir_tableau()
+
+    def _rafraichir_tableau(self) -> None:
+        if self.bibliotheque is None:
+            self._afficher_livres([])
+            return
+
+        texte = self.recherche_var.get().strip()
+        mode = self.choix_par.get()
+        disponibles_seulement = bool(self.filtre_disponibles.get())
+
+        if not texte:
+            livres = (
+                self.bibliotheque.available_books()
+                if disponibles_seulement
+                else self.bibliotheque.all_books()
+            )
+        elif mode == "Titre":
+            livres = self.bibliotheque.search_books_by_title(texte)
+        elif mode == "Auteur":
+            livres = self.bibliotheque.search_books_by_author(texte)
+        else:
+            livre = self.bibliotheque.find_book_by_isbn(texte)
+            livres = [livre] if livre is not None else []
+
+        if disponibles_seulement and texte:
+            livres = [livre for livre in livres if livre.available]
+
+        self._afficher_livres(livres)
+
+    def _afficher_livres(self, livres) -> None:
         for element in self.tableau.get_children():
             self.tableau.delete(element)
 
-        if self.bibliotheque is None:
-            return
-
-        for livre in self.bibliotheque.all_books():
+        for livre in livres:
             statut = "Disponible" if livre.available else "Emprunté"
             emprunteur = livre.borrower_id or "—"
             self.tableau.insert(
