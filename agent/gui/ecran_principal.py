@@ -41,10 +41,12 @@ class EcranPrincipal(ctk.CTkFrame):
         parent: ctk.CTkFrame,
         bibliotheque=None,
         erreur: str | None = None,
+        on_mutation=None,
     ) -> None:
         super().__init__(parent, fg_color=COULEUR_FOND, corner_radius=0)
         self.bibliotheque = bibliotheque
         self.erreur = erreur
+        self.on_mutation = on_mutation
         self._construire_filtres()
         self._construire_erreur()
         self._construire_tableau()
@@ -255,7 +257,7 @@ class EcranPrincipal(ctk.CTkFrame):
         for texte, largeur, commande in (
             ("Supprimer", 100, None),
             ("Emprunter", 100, self._ouvrir_dialogue_emprunt),
-            ("Retourner", 100, None),
+            ("Retourner", 100, self._retourner_livre),
         ):
             bouton = self._bouton_secondaire(
                 actions,
@@ -271,13 +273,82 @@ class EcranPrincipal(ctk.CTkFrame):
         bouton_sauvegarder = self._bouton_secondaire(actions, "Sauvegarder", 130)
         bouton_sauvegarder.pack(side="right", padx=(0, 10))
 
+        self.label_action = ctk.CTkLabel(
+            self,
+            text="",
+            height=18,
+            font=POLICE_PETITE,
+            text_color=COULEUR_TEXTE_SECONDAIRE,
+            anchor="w",
+        )
+        self.label_action.pack(fill="x", padx=24, pady=(0, 12))
+
+    def _afficher_message(self, message: str, erreur: bool = False) -> None:
+        self.label_action.configure(
+            text=message,
+            text_color=COULEUR_ERREUR if erreur else COULEUR_TEXTE_SECONDAIRE,
+        )
+
+    def _effacer_message(self) -> None:
+        self.label_action.configure(text="")
+
+    def _livre_selectionne(self):
+        if self.bibliotheque is None:
+            self._afficher_message("La bibliothèque n'est pas chargée.", erreur=True)
+            return None
+
+        selection = self.tableau.selection()
+        if not selection:
+            self._afficher_message("Sélectionnez un livre.", erreur=True)
+            return None
+
+        isbn = self.tableau.item(selection[0], "values")[2]
+        livre = self.bibliotheque.find_book_by_isbn(isbn)
+        if livre is None:
+            self._afficher_message("Livre introuvable.", erreur=True)
+            return None
+        return livre
+
+    def _apres_mutation(self) -> None:
+        self._rafraichir_tableau()
+        if self.on_mutation is not None:
+            self.on_mutation()
+
     def _ouvrir_dialogue_ajout(self) -> None:
+        self._effacer_message()
         dialogue = DialogueAjoutLivre(self.winfo_toplevel())
         self.wait_window(dialogue)
 
     def _ouvrir_dialogue_emprunt(self) -> None:
-        dialogue = DialogueEmpruntLivre(self.winfo_toplevel())
+        self._effacer_message()
+        livre = self._livre_selectionne()
+        if livre is None:
+            return
+
+        dialogue = DialogueEmpruntLivre(
+            self.winfo_toplevel(),
+            self.bibliotheque,
+            livre,
+        )
         self.wait_window(dialogue)
+        if dialogue.emprunt_reussi:
+            self._apres_mutation()
+            self._afficher_message("Livre emprunté.")
+
+    def _retourner_livre(self) -> None:
+        self._effacer_message()
+        livre = self._livre_selectionne()
+        if livre is None:
+            return
+
+        if self.bibliotheque.return_book(livre.isbn):
+            self._apres_mutation()
+            self._afficher_message("Livre retourné.")
+        else:
+            self._afficher_message(
+                "Impossible de retourner ce livre : il n'est pas emprunté.",
+                erreur=True,
+            )
 
     def _bouton_primaire(
         self,

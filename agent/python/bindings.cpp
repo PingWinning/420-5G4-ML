@@ -27,6 +27,15 @@ PYBIND11_MODULE(bibliotheque_py, m) {
             return "<Book " + book.getISBN() + ">";
         });
 
+    py::class_<User>(m, "User")
+        .def_property_readonly("name", &User::getName)
+        .def_property_readonly("user_id", &User::getUserId)
+        .def_property_readonly("borrowed_books", &User::getBorrowedBooks)
+        .def("to_string", &User::toString)
+        .def("__repr__", [](const User& user) {
+            return "<User " + user.getUserId() + ">";
+        });
+
     py::class_<Library, std::unique_ptr<Library>>(m, "Library")
         .def("all_books", [](Library& library) {
             std::vector<Book> books;
@@ -64,6 +73,16 @@ PYBIND11_MODULE(bibliotheque_py, m) {
             }
             return books;
         })
+        .def("all_users", [](Library& library) {
+            std::vector<User> users;
+            for (User* user : library.getAllUsers()) {
+                users.push_back(*user);
+            }
+            return users;
+        })
+        .def("check_out_book", &Library::checkOutBook,
+             py::arg("isbn"), py::arg("user_id"))
+        .def("return_book", &Library::returnBook, py::arg("isbn"))
         .def_property_readonly("total_books", &Library::getTotalBooks)
         .def_property_readonly("available_count", &Library::getAvailableBookCount)
         .def_property_readonly("checked_out_count", &Library::getCheckedOutBookCount)

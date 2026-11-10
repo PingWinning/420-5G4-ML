@@ -3,6 +3,7 @@ import customtkinter as ctk
 from theme import (
     COULEUR_BANDEAU,
     COULEUR_BORDURE,
+    COULEUR_ERREUR,
     COULEUR_FOND,
     COULEUR_PRIMAIRE,
     COULEUR_PRIMAIRE_SURVOL,
@@ -29,8 +30,12 @@ HAUTEUR_APERCU = 86
 
 
 class DialogueEmpruntLivre(ctk.CTkToplevel):
-    def __init__(self, parent: ctk.CTk) -> None:
+    def __init__(self, parent: ctk.CTk, bibliotheque, livre) -> None:
         super().__init__(parent, fg_color=COULEUR_FOND)
+        self.bibliotheque = bibliotheque
+        self.livre = livre
+        self.emprunt_reussi = False
+        self.utilisateurs_par_libelle: dict[str, str] = {}
         self.title("Emprunter un livre")
         self.resizable(False, False)
         self.transient(parent)
@@ -78,7 +83,7 @@ class DialogueEmpruntLivre(ctk.CTkToplevel):
         bouton_confirmer = ctk.CTkButton(
             actions,
             text="Confirmer",
-            command=self._fermer,
+            command=self._confirmer,
             width=100,
             height=HAUTEUR_BOUTON,
             corner_radius=RAYON,
@@ -119,6 +124,8 @@ class DialogueEmpruntLivre(ctk.CTkToplevel):
             "ISBN du livre",
             "Saisir l'ISBN",
         )
+        self.champ_isbn.insert(0, self.livre.isbn)
+        self.champ_isbn.configure(state="disabled")
 
         label_utilisateur = ctk.CTkLabel(
             contenu,
@@ -130,9 +137,16 @@ class DialogueEmpruntLivre(ctk.CTkToplevel):
         )
         label_utilisateur.pack(fill="x", pady=(0, 4))
 
+        if self.bibliotheque is not None:
+            for utilisateur in self.bibliotheque.all_users():
+                libelle = f"{utilisateur.name} ({utilisateur.user_id})"
+                self.utilisateurs_par_libelle[libelle] = utilisateur.user_id
+
+        valeurs = ["Sélectionner un utilisateur", *self.utilisateurs_par_libelle]
+
         self.combo_utilisateur = ctk.CTkComboBox(
             contenu,
-            values=["Sélectionner un utilisateur"],
+            values=valeurs,
             height=HAUTEUR_CHAMP,
             corner_radius=RAYON,
             border_width=1,
@@ -152,6 +166,21 @@ class DialogueEmpruntLivre(ctk.CTkToplevel):
         self.combo_utilisateur.pack(fill="x", pady=(0, 14))
 
         self._construire_apercu(contenu)
+        self.apercu_titre.configure(text=self.livre.title)
+        self.apercu_auteur.configure(text=self.livre.author)
+        self.apercu_statut.configure(
+            text=f"Statut : {'Disponible' if self.livre.available else 'Emprunté'}"
+        )
+
+        self.label_erreur = ctk.CTkLabel(
+            contenu,
+            text="",
+            height=18,
+            font=POLICE_PETITE,
+            text_color=COULEUR_ERREUR,
+            anchor="w",
+        )
+        self.label_erreur.pack(fill="x", pady=(8, 0))
 
     def _construire_apercu(self, parent: ctk.CTkFrame) -> None:
         apercu = ctk.CTkFrame(
@@ -225,6 +254,30 @@ class DialogueEmpruntLivre(ctk.CTkToplevel):
         )
         champ.pack(fill="x", pady=(0, 14))
         return champ
+
+    def _confirmer(self) -> None:
+        if self.bibliotheque is None:
+            self._afficher_erreur("La bibliothèque n'est pas chargée.")
+            return
+
+        libelle = self.combo_utilisateur.get()
+        user_id = self.utilisateurs_par_libelle.get(libelle)
+        if user_id is None:
+            self._afficher_erreur("Sélectionnez un utilisateur.")
+            return
+
+        if not self.bibliotheque.check_out_book(self.livre.isbn, user_id):
+            if not self.livre.available:
+                self._afficher_erreur("Ce livre est déjà emprunté.")
+            else:
+                self._afficher_erreur("L'emprunt a échoué.")
+            return
+
+        self.emprunt_reussi = True
+        self._fermer()
+
+    def _afficher_erreur(self, message: str) -> None:
+        self.label_erreur.configure(text=message)
 
     def _centrer(self, parent: ctk.CTk) -> None:
         self.update_idletasks()

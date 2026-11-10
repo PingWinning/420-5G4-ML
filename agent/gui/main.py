@@ -289,6 +289,7 @@ class Application(ctk.CTk):
                 self.conteneur,
                 self.bibliotheque,
                 self.erreur_chargement,
+                on_mutation=self._mettre_a_jour_statistiques,
             )
         else:
             self.ecran_actuel = EcranUtilisateurs(self.conteneur)

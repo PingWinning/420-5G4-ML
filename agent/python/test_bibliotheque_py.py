@@ -75,6 +75,46 @@ def main():
         }
         assert all(isinstance(book, bibliotheque_py.Book) for book in disponibles)
 
+        utilisateurs = library.all_users()
+        assert len(utilisateurs) == library.users_count
+        assert all(isinstance(user, bibliotheque_py.User) for user in utilisateurs)
+        assert {user.user_id for user in utilisateurs} >= {
+            "USR001",
+            "USR002",
+            "USR015",
+            "USR016",
+        }
+
+        avant = library.available_count
+        assert library.check_out_book("9782070612758", "USR015") is True
+        assert library.available_count == avant - 1
+        emprunte = library.find_book_by_isbn("9782070612758")
+        assert emprunte.available is False
+        assert emprunte.borrower_id == "USR015"
+        assert "9782070612758" in next(
+            user for user in library.all_users() if user.user_id == "USR015"
+        ).borrowed_books
+
+        avant = library.available_count
+        assert library.check_out_book("9782253096337", "USR016") is False
+        assert library.available_count == avant
+        deja_emprunte = library.find_book_by_isbn("9782253096337")
+        assert deja_emprunte.available is False
+        assert deja_emprunte.borrower_id == "USR001"
+        assert "9782253096337" not in next(
+            user for user in library.all_users() if user.user_id == "USR016"
+        ).borrowed_books
+
+        avant = library.available_count
+        assert library.return_book("9782070413119") is True
+        assert library.available_count == avant + 1
+        retourne = library.find_book_by_isbn("9782070413119")
+        assert retourne.available is True
+        assert retourne.borrower_id == ""
+        assert "9782070413119" not in next(
+            user for user in library.all_users() if user.user_id == "USR002"
+        ).borrowed_books
+
     assert source_hashes == {
         name: file_hash(DATA_DIR / name) for name in ("books.txt", "users.txt")
     }
