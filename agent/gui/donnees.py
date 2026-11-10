@@ -16,7 +16,26 @@ COMMANDE_COMPILATION = (
 )
 
 
-def charger_bibliotheque():
+def _resoudre_repertoire(repertoire_donnees=None):
+    return Path(repertoire_donnees) if repertoire_donnees is not None else REPERTOIRE_DONNEES
+
+
+def charger_bibliotheque(repertoire_donnees=None):
     import bibliotheque_py
 
-    return bibliotheque_py.load_library(str(REPERTOIRE_DONNEES))
+    return bibliotheque_py.load_library(str(_resoudre_repertoire(repertoire_donnees)))
+
+
+def sauvegarder_bibliotheque(bibliotheque, repertoire_donnees=None):
+    import bibliotheque_py
+
+    return bibliotheque_py.save_library(
+        bibliotheque,
+        str(_resoudre_repertoire(repertoire_donnees)),
+    )
+
+
+def creer_backup(repertoire_donnees=None):
+    import bibliotheque_py
+
+    return bibliotheque_py.create_backup(str(_resoudre_repertoire(repertoire_donnees)))

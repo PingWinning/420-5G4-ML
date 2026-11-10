@@ -31,7 +31,7 @@ cd agent
 - `data/users.txt` : `nom|userId|isbn1,isbn2`.
 - `Library::removeBook` côté C++ ne vérifie pas si le livre est emprunté ; le refus de supprimer un livre emprunté est appliqué uniquement par la GUI.
 - L'application charge et sauvegarde ces fichiers suivis par git (sauvegarde à la sortie et via le menu 12). Pour tester sans modifier le dépôt, copier `data/` dans un répertoire temporaire et passer ce chemin à `-d`.
-- Le menu 13 crée des fichiers `.backup` dans le répertoire de données ; ils ne sont pas ignorés par git. `copy_file` n'écrase pas un backup existant.
+- Le menu 13 crée des fichiers `.backup` dans le répertoire de données ; ils sont ignorés par git via `*.backup`. `FileManager::createBackup` lance une exception non attrapée si un backup existe déjà : `copy_file` n'écrase pas le fichier existant.
 
 ## Structure
 
@@ -72,6 +72,9 @@ cd agent/gui
 - `requirements.txt` fige les dépendances installées.
 - L'écran Livres affiche les vraies données via `gui/donnees.py` : le module `bibliotheque_py` est importé depuis `build/` et les fichiers sont lus depuis `data/`.
 - L'écran Utilisateurs charge `all_users()`. L'ID du panneau d'ajout est généré automatiquement en grisé : premier `USRxxx` libre sur 3 chiffres, recalculé après chaque ajout. L'ajout reste en mémoire, sans sauvegarde dans `data/`.
+- La GUI accepte `-d` / `--data-dir` comme la console ; sans option, elle utilise `agent/data`. Le chemin est relatif au répertoire courant.
+- Les boutons Sauvegarder et Créer une copie utilisent `FileManager` via `bibliotheque_py`. Un backup existant n'est jamais écrasé : le binding renvoie `False` et la GUI demande de supprimer l'ancien fichier.
+- Aucune action ne sauvegarde automatiquement dans `data/`. À la fermeture, la GUI utilise `messagebox.askyesnocancel` s'il y a des modifications non sauvegardées ; Annuler garde la fenêtre ouverte.
 - Si le chargement échoue, l'écran Livres affiche l'erreur et la commande cmake pour compiler le module.
 - La fenêtre nécessite un serveur X11 (`DISPLAY`), fourni par le devcontainer.
 

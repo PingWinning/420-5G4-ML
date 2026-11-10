@@ -119,4 +119,32 @@ PYBIND11_MODULE(bibliotheque_py, m) {
         fileManager.loadLibraryData(*library);
         return library;
     }, py::arg("data_dir"), "Charge les livres et les utilisateurs depuis un répertoire de données.");
+
+    m.def("save_library", [](Library& library, const std::string& dataDir) {
+        const std::filesystem::path directory(dataDir);
+        FileManager fileManager(
+            (directory / "books.txt").string(),
+            (directory / "users.txt").string());
+        return fileManager.saveLibraryData(library);
+    }, py::arg("library"), py::arg("data_dir"),
+       "Sauvegarde les livres et les utilisateurs dans un répertoire de données.");
+
+    m.def("create_backup", [](const std::string& dataDir) {
+        const std::filesystem::path directory(dataDir);
+        const std::string booksFile = (directory / "books.txt").string();
+        const std::string usersFile = (directory / "users.txt").string();
+        FileManager fileManager(booksFile, usersFile);
+
+        if (fileManager.fileExists(booksFile + ".backup") ||
+            fileManager.fileExists(usersFile + ".backup")) {
+            return false;
+        }
+
+        try {
+            fileManager.createBackup();
+            return true;
+        } catch (const std::filesystem::filesystem_error&) {
+            return false;
+        }
+    }, py::arg("data_dir"), "Crée une copie de sauvegarde sans écraser les backups existants.");
 }

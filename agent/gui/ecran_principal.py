@@ -42,11 +42,15 @@ class EcranPrincipal(ctk.CTkFrame):
         bibliotheque=None,
         erreur: str | None = None,
         on_mutation=None,
+        on_sauvegarder=None,
+        on_backup=None,
     ) -> None:
         super().__init__(parent, fg_color=COULEUR_FOND, corner_radius=0)
         self.bibliotheque = bibliotheque
         self.erreur = erreur
         self.on_mutation = on_mutation
+        self.on_sauvegarder = on_sauvegarder
+        self.on_backup = on_backup
         self._construire_filtres()
         self._construire_erreur()
         self._construire_tableau()
@@ -267,10 +271,20 @@ class EcranPrincipal(ctk.CTkFrame):
             )
             bouton.pack(side="left", padx=(10, 0))
 
-        bouton_copie = self._bouton_secondaire(actions, "Créer une copie", 140)
+        bouton_copie = self._bouton_secondaire(
+            actions,
+            "Créer une copie",
+            140,
+            commande=self._creer_backup,
+        )
         bouton_copie.pack(side="right")
 
-        bouton_sauvegarder = self._bouton_secondaire(actions, "Sauvegarder", 130)
+        bouton_sauvegarder = self._bouton_secondaire(
+            actions,
+            "Sauvegarder",
+            130,
+            commande=self._sauvegarder,
+        )
         bouton_sauvegarder.pack(side="right", padx=(0, 10))
 
         self.label_action = ctk.CTkLabel(
@@ -291,6 +305,24 @@ class EcranPrincipal(ctk.CTkFrame):
 
     def _effacer_message(self) -> None:
         self.label_action.configure(text="")
+
+    def _sauvegarder(self) -> None:
+        self._effacer_message()
+        if self.on_sauvegarder is None or not self.on_sauvegarder():
+            self._afficher_message("Erreur lors de la sauvegarde.", erreur=True)
+            return
+        self._afficher_message("Données sauvegardées.")
+
+    def _creer_backup(self) -> None:
+        self._effacer_message()
+        if self.on_backup is None or not self.on_backup():
+            self._afficher_message(
+                "Impossible de créer la copie : un fichier .backup existe déjà. "
+                "Supprimez-le pour en créer un nouveau.",
+                erreur=True,
+            )
+            return
+        self._afficher_message("Copie créée.")
 
     def _livre_selectionne(self):
         if self.bibliotheque is None:

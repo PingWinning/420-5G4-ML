@@ -149,6 +149,44 @@ def main():
         assert library.available_count == avant_dispo
         assert library.find_book_by_isbn("9780000000001") is None
 
+        assert library.add_user("Utilisateur Sauvegarde", "USR098") is True
+        assert library.add_book(
+            "Livre Sauvegarde", "Auteur Sauvegarde", "9780000000003"
+        ) is True
+        assert bibliotheque_py.save_library(library, str(copied_data)) is True
+
+        books_text = (copied_data / "books.txt").read_text(encoding="utf-8")
+        users_text = (copied_data / "users.txt").read_text(encoding="utf-8")
+        assert "Livre Sauvegarde|Auteur Sauvegarde|9780000000003|1|" in books_text
+        assert "Utilisateur Sauvegarde|USR098|" in users_text
+
+        rechargee = bibliotheque_py.load_library(str(copied_data))
+        assert (
+            rechargee.find_book_by_isbn("9780000000003").title == "Livre Sauvegarde"
+        )
+        assert any(
+            user.user_id == "USR098" and user.name == "Utilisateur Sauvegarde"
+            for user in rechargee.all_users()
+        )
+
+        assert bibliotheque_py.create_backup(str(copied_data)) is True
+        books_backup = copied_data / "books.txt.backup"
+        users_backup = copied_data / "users.txt.backup"
+        assert books_backup.exists()
+        assert users_backup.exists()
+        assert books_backup.read_bytes() == (copied_data / "books.txt").read_bytes()
+        assert users_backup.read_bytes() == (copied_data / "users.txt").read_bytes()
+
+        backups_hashes = {
+            "books.txt.backup": file_hash(books_backup),
+            "users.txt.backup": file_hash(users_backup),
+        }
+        assert bibliotheque_py.create_backup(str(copied_data)) is False
+        assert backups_hashes == {
+            "books.txt.backup": file_hash(books_backup),
+            "users.txt.backup": file_hash(users_backup),
+        }
+
     assert source_hashes == {
         name: file_hash(DATA_DIR / name) for name in ("books.txt", "users.txt")
     }

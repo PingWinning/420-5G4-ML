@@ -1,8 +1,15 @@
-from tkinter import ttk
+import argparse
+from pathlib import Path
+from tkinter import messagebox, ttk
 
 import customtkinter as ctk
 
-from donnees import charger_bibliotheque
+from donnees import (
+    REPERTOIRE_DONNEES,
+    charger_bibliotheque,
+    creer_backup,
+    sauvegarder_bibliotheque,
+)
 from ecran_principal import EcranPrincipal
 from ecran_utilisateurs import EcranUtilisateurs
 from theme import (
@@ -76,7 +83,7 @@ def configurer_style_tableau() -> None:
 
 
 class Application(ctk.CTk):
-    def __init__(self) -> None:
+    def __init__(self, repertoire_donnees=None) -> None:
         super().__init__(fg_color=COULEUR_FOND)
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
@@ -84,14 +91,21 @@ class Application(ctk.CTk):
         self.title("Système de gestion de bibliothèque")
         self.geometry(f"{LARGEUR_FENETRE}x{HAUTEUR_FENETRE}")
         self.minsize(LARGEUR_MIN, HAUTEUR_MIN)
+        self.protocol("WM_DELETE_WINDOW", self._fermer)
 
+        self.repertoire_donnees = (
+            Path(repertoire_donnees)
+            if repertoire_donnees is not None
+            else REPERTOIRE_DONNEES
+        )
+        self.modifie = False
         self.ecran_actuel: ctk.CTkFrame | None = None
         self.boutons_navigation: dict[str, ctk.CTkButton] = {}
         self.labels_stats: dict[str, tuple[ctk.CTkLabel, str]] = {}
         self.erreur_chargement: str | None = None
 
         try:
-            self.bibliotheque = charger_bibliotheque()
+            self.bibliotheque = charger_bibliotheque(self.repertoire_donnees)
         except Exception as erreur:
             self.bibliotheque = None
             self.erreur_chargement = str(erreur)
@@ -277,6 +291,51 @@ class Application(ctk.CTk):
         for cle, (label, libelle) in self.labels_stats.items():
             label.configure(text=f"{libelle} : {valeurs[cle]}")
 
+    def _apres_mutation(self) -> None:
+        self.modifie = True
+        self._mettre_a_jour_statistiques()
+
+    def _sauvegarder(self) -> bool:
+        if self.bibliotheque is None:
+            return False
+
+        succes = sauvegarder_bibliotheque(
+            self.bibliotheque,
+            self.repertoire_donnees,
+        )
+        if succes:
+            self.modifie = False
+        return succes
+
+    def _creer_backup(self) -> bool:
+        if self.bibliotheque is None:
+            return False
+        return creer_backup(self.repertoire_donnees)
+
+    def _fermer(self) -> None:
+        if not self.modifie:
+            self.destroy()
+            return
+
+        reponse = messagebox.askyesnocancel(
+            "Quitter",
+            "Des modifications ne sont pas sauvegardées. "
+            "Voulez-vous sauvegarder avant de quitter ?",
+            parent=self,
+        )
+        if reponse is None:
+            return
+
+        if reponse and not self._sauvegarder():
+            messagebox.showerror(
+                "Sauvegarde",
+                "Impossible de sauvegarder les données.",
+                parent=self,
+            )
+            return
+
+        self.destroy()
+
     def afficher_ecran(self, nom: str) -> None:
         if nom not in ECRANS:
             nom = "livres"
@@ -289,14 +348,16 @@ class Application(ctk.CTk):
                 self.conteneur,
                 self.bibliotheque,
                 self.erreur_chargement,
-                on_mutation=self._mettre_a_jour_statistiques,
+                on_mutation=self._apres_mutation,
+                on_sauvegarder=self._sauvegarder,
+                on_backup=self._creer_backup,
             )
         else:
             self.ecran_actuel = EcranUtilisateurs(
                 self.conteneur,
                 self.bibliotheque,
                 self.erreur_chargement,
-                on_mutation=self._mettre_a_jour_statistiques,
+                on_mutation=self._apres_mutation,
             )
 
         self.ecran_actuel.pack(fill="both", expand=True)
@@ -315,7 +376,24 @@ class Application(ctk.CTk):
 
 
 def main() -> None:
-    application = Application()
+    analyseur = argparse.ArgumentParser(
+        description="Système de gestion de bibliothèque",
+    )
+    analyseur.add_argument(
+        "-d",
+        "--data-dir",
+        default=str(REPERTOIRE_DONNEES),
+        help="répertoire contenant books.txt et users.txt",
+    )
+    arguments = analyseur.parse_args()
+
+    repertoire_donnees = Path(arguments.data_dir)
+    if not repertoire_donnees.is_dir():
+        raise SystemExit(
+            f"Erreur : le répertoire {repertoire_donnees} n'existe pas."
+        )
+
+    application = Application(repertoire_donnees)
     application.mainloop()
 
 
