@@ -78,4 +78,12 @@ cd agent/gui
 - Si le chargement échoue, l'écran Livres affiche l'erreur et la commande cmake pour compiler le module.
 - La fenêtre nécessite un serveur X11 (`DISPLAY`), fourni par le devcontainer.
 
+## Limites connues
+
+- Le caractère `|` n'est pas refusé dans les champs : il corrompt le format pipe-delimited à la sauvegarde/relecture.
+- Un répertoire `-d` existant mais sans `books.txt`/`users.txt` est chargé comme une bibliothèque vide, sans erreur.
+- La sauvegarde n'est pas atomique : une écriture partielle peut laisser `books.txt` et `users.txt` incohérents.
+- Les double-clics ne sont pas protégés : traces Tcl possibles et messages de succès remplacés par une erreur.
+- C++ : `removeBook` supprime un livre emprunté sans mise à jour de l'emprunteur ; `createBackup` lance une exception non attrapée si un `.backup` existe déjà.
+
 Le `.devcontainer` fournit X11, utilisé par la GUI Python de test ; l'application C++ reste uniquement console.
